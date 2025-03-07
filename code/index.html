@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agenda de Tareas</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            background-color: #f4f7fc;
+            color: #333;
+            text-align: center;
+            padding: 30px;
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: auto;
+            padding: 15px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        input, button {
+            width: 100%;
+            padding: 12px;
+            margin: 5px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        button {
+            background-color: #3498db;
+            color: white;
+            cursor: pointer;
+            border: none;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        .dia {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .tarea {
+            background-color: #ecf0f1;
+            padding: 10px;
+            margin: 8px 0;
+            border-radius: 5px;
+            list-style: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.3s;
+            word-break: break-word;
+        }
+
+        .tarea:hover {
+            background-color: #d5dbdb;
+        }
+
+        .cumplida {
+            text-decoration: line-through;
+            color: gray;
+        }
+
+        .botonEliminar {
+            background: red;
+            border: none;
+            padding: 5px;
+            cursor: pointer;
+            color: white;
+            font-size: 14px;
+            border-radius: 5px;
+        }
+
+        .botonEliminar:hover {
+            background: darkred;
+        }
+
+        /* Diseño Responsivo */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            .container {
+                width: 90%;
+                padding: 10px;
+            }
+
+            input, button {
+                font-size: 14px;
+                padding: 10px;
+            }
+
+            .tarea {
+                font-size: 14px;
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .botonEliminar {
+                margin-top: 5px;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📅 Agenda de Tareas</h1>
+        
+        <h2>Selecciona un Día</h2>
+        <input type="date" id="fechaInput">
+        <button onclick="crearDia()">Seleccionar Día</button>
+        
+        <h2>Historial de Actividades</h2>
+        <div id="agenda"></div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", cargarTareas);
+
+        function crearDia(fecha = null) {
+            if (!fecha) {
+                fecha = document.getElementById("fechaInput").value;
+            }
+            if (!fecha) return;
+            
+            var agenda = document.getElementById("agenda");
+            var diaId = "dia-" + fecha;
+            
+            if (!document.getElementById(diaId)) {
+                var nuevoDia = document.createElement("div");
+                nuevoDia.id = diaId;
+                nuevoDia.className = "dia";
+                nuevoDia.innerHTML = `
+                    <h3>${fecha}</h3>
+                    <input type="text" id="tarea-${fecha}" placeholder="Agregar tarea">
+                    <input type="time" id="hora-${fecha}">
+                    <button onclick="agregarTarea('${fecha}')">➕ Agregar Tarea</button>
+                    <button onclick="eliminarDia('${fecha}')" class="botonEliminar">🗑 Eliminar Día</button>
+                    <button onclick="marcarTodasCumplidas('${fecha}')">✅ Marcar Todas Hechas</button>
+                    <ul id="listaTareas-${fecha}"></ul>`;
+                
+                var dias = Array.from(agenda.children);
+                var insertado = false;
+                for (let i = 0; i < dias.length; i++) {
+                    if (dias[i].id > diaId) {
+                        agenda.insertBefore(nuevoDia, dias[i]);
+                        insertado = true;
+                        break;
+                    }
+                }
+                if (!insertado) {
+                    agenda.appendChild(nuevoDia);
+                }
+                cargarTareasDia(fecha);
+            }
+        }
+
+        function agregarTarea(fecha) {
+            var input = document.getElementById("tarea-" + fecha);
+            var hora = document.getElementById("hora-" + fecha);
+            var lista = document.getElementById("listaTareas-" + fecha);
+            if (input.value.trim() !== "" && hora.value) {
+                var nuevaTarea = document.createElement("li");
+                nuevaTarea.className = "tarea";
+                nuevaTarea.innerHTML = `${hora.value} - ${input.value} 
+                    <button onclick="eliminarTarea(this, '${fecha}')" class="botonEliminar">❌</button>`;
+                nuevaTarea.onclick = function() { marcarCumplida(this, fecha); };
+                lista.appendChild(nuevaTarea);
+                guardarTareas(fecha);
+                input.value = "";
+                hora.value = "";
+            }
+        }
+
+        function guardarTareas(fecha) {
+            var lista = document.getElementById("listaTareas-" + fecha);
+            var tareas = [];
+            lista.querySelectorAll("li").forEach(tarea => {
+                tareas.push({ texto: tarea.childNodes[0].textContent.trim(), cumplida: tarea.classList.contains("cumplida") });
+            });
+            localStorage.setItem("tareas-" + fecha, JSON.stringify(tareas));
+        }
+
+        function cargarTareas() {
+            var agenda = document.getElementById("agenda");
+            var fechas = Object.keys(localStorage)
+                .filter(key => key.startsWith("tareas-"))
+                .map(key => key.replace("tareas-", ""))
+                .sort();
+            
+            fechas.forEach(fecha => crearDia(fecha));
+        }
+
+        function eliminarDia(fecha) {
+            if (confirm("¿Eliminar todas las tareas de este día?")) {
+                document.getElementById("dia-" + fecha).remove();
+                localStorage.removeItem("tareas-" + fecha);
+            }
+        }
+
+        function eliminarTarea(boton, fecha) {
+            boton.parentElement.remove();
+            guardarTareas(fecha);
+        }
+
+        function marcarCumplida(elemento, fecha) {
+            elemento.classList.toggle("cumplida");
+            guardarTareas(fecha);
+        }
+
+        function marcarTodasCumplidas(fecha) {
+            document.querySelectorAll(`#listaTareas-${fecha} .tarea`).forEach(tarea => tarea.classList.add("cumplida"));
+            guardarTareas(fecha);
+        }
+    </script>
+</body>
+</html>
